@@ -43,9 +43,9 @@ async def verify_token(request: TokenRequest):
         }
 
     except Exception:
-    return JSONResponse(
-        status_code=401,
-        content={"valid": False}
+        return JSONResponse(
+            status_code=401,
+            content={"valid": False}
     )
     # ------------------- Q3 : /effective-config -------------------
 
