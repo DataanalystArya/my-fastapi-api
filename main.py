@@ -46,7 +46,7 @@ async def verify_token(request: TokenRequest):
         return JSONResponse(
             status_code=401,
             content={"valid": False}
-    )
+        )
     # ------------------- Q3 : /effective-config -------------------
 
 DEFAULTS = {
