@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import jwt
 
@@ -41,7 +43,65 @@ async def verify_token(request: TokenRequest):
         }
 
     except Exception:
-        raise HTTPException(
-            status_code=401,
-            detail={"valid": False}
-        )
+    return JSONResponse(
+        status_code=401,
+        content={"valid": False}
+    )
+    # ------------------- Q3 : /effective-config -------------------
+
+DEFAULTS = {
+    "port": 8000,
+    "workers": 1,
+    "debug": False,
+    "log_level": "info",
+    "api_key": "default-secret-000",
+}
+
+YAML_CONFIG = {
+    "workers": 10,
+    "api_key": "key-0587m264vl",
+}
+
+ENV_FILE = {
+    "port": 8651,
+    "workers": 2,   # NUM_WORKERS -> workers
+    "log_level": "info",
+}
+
+OS_ENV = {
+    "port": 8518,
+    "workers": 14,
+    "debug": True,
+    "log_level": "error",
+    "api_key": "key-qcsk12icex",
+}
+
+def to_bool(value):
+    return str(value).lower() in ["true", "1", "yes", "on"]
+
+@app.get("/effective-config")
+async def effective_config(set: list[str] = Query(default=[])):
+    config = {}
+
+    # Merge in precedence order
+    config.update(DEFAULTS)
+    config.update(YAML_CONFIG)
+    config.update(ENV_FILE)
+    config.update(OS_ENV)
+
+    # CLI overrides
+    for item in set:
+        if "=" in item:
+            key, value = item.split("=", 1)
+
+            if key in ["port", "workers"]:
+                value = int(value)
+            elif key == "debug":
+                value = to_bool(value)
+
+            config[key] = value
+
+    # Mask secret
+    config["api_key"] = "****"
+
+    return config
