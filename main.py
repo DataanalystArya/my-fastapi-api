@@ -10,9 +10,9 @@ ALLOWED_ORIGIN = "https://dash-j0c4z9.example.com"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN],
-    allow_credentials=True,
-    allow_methods=["GET", "OPTIONS"],
+    allow_origins=["https://dash-j0c4z9.example.com"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
