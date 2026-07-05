@@ -1,57 +1,47 @@
-import time
-import uuid
-from fastapi import FastAPI, Query, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import jwt
 
 app = FastAPI()
 
-# 1. CORS Policy Settings
-ALLOWED_ORIGIN = "https://dash-j0c4z9.example.com"
+PUBLIC_KEY = """
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2okOHspNjgA+2rTLbeuY
+cxiP/hG8C6Sb9iwg3yiLAA4HCnpITcbWCSelbvbYGuc3EbNy4xFyf5Cbj5DHJMID
+EkryOgyd2giIIIBOUBj8S63uGcnRpOBh9NFatfNwheKuzsPuVNldu6A9cNteNpXc
+WyJjG2axVfmq7i6SuKr1JoWYG7xTTAvKPujSl4OtsQfO3h5NepzdfXpr28oNnzfW
+ed+zclR6BcmNNo/WVfJ4xyCLSf0BCOgdTgW6PdaChd1l9VDetJZVEgC5tkyvXsfI
+SI6iyrYbKR0NEBSqq4XkadEjsCs4F1RncsS4LlgniT7GlkL9Mce3b0wGLs9/7ZIX
+dQIDAQAB
+-----END PUBLIC KEY-----
+"""
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://dash-j0c4z9.example.com"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+ISSUER = "https://idp.exam.local"
+AUDIENCE = "tds-iu76h7tr.apps.exam.local"
 
-# 2. Required Headers Middleware (X-Request-ID and X-Process-Time)
-@app.middleware("http")
-async def add_custom_headers(request: Request, call_next):
-    start_time = time.perf_counter()
-    
-    response = await call_next(request)
-    
-    process_time = time.perf_counter() - start_time
-    
-    response.headers["X-Request-ID"] = str(uuid.uuid4())
-    response.headers["X-Process-Time"] = f"{process_time:.6f}"
-    
-    return response
+class TokenRequest(BaseModel):
+    token: str
 
-# 3. GET /stats Endpoint
-@app.get("/stats")
-async def get_stats(values: str = Query(..., description="Comma-separated integers")):
+@app.post("/verify")
+async def verify_token(request: TokenRequest):
     try:
-        num_list = [int(x.strip()) for x in values.split(",") if x.strip()]
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid integer format.")
-    
-    if not num_list:
-        raise HTTPException(status_code=400, detail="Values cannot be empty.")
-    
-    count = len(num_list)
-    total_sum = sum(num_list)
-    minimum = min(num_list)
-    maximum = max(num_list)
-    mean = total_sum / count
+        payload = jwt.decode(
+            request.token,
+            PUBLIC_KEY,
+            algorithms=["RS256"],
+            audience=AUDIENCE,
+            issuer=ISSUER,
+        )
 
-    return {
-        "email": "24f2000456@ds.study.iitm.ac.in", 
-        "count": count,
-        "sum": total_sum,
-        "min": minimum,
-        "max": maximum,
-        "mean": round(mean, 4)
-    }
+        return {
+            "valid": True,
+            "email": payload.get("email"),
+            "sub": payload.get("sub"),
+            "aud": payload.get("aud"),
+        }
+
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail={"valid": False}
+        )
